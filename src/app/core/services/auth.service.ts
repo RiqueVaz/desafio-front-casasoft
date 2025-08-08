@@ -24,9 +24,9 @@ export class AuthService {
 
 
   login(email: string, senha: string): Observable<AuthResponse> {
-    const loginData = { email, senha };
+    const loginData = { login: email, senha };
     
-    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, loginData)
+    return this.http.post<AuthResponse>(`${this.apiUrl}/api/v1/login/token`, loginData)
       .pipe(
         tap((response: AuthResponse) => {
           if (response?.data?.accessToken) {
@@ -89,6 +89,7 @@ export class AuthService {
 
   private setTokenData(data: any): void {
     localStorage.setItem(this.TOKEN_KEY, data.accessToken);
+    localStorage.setItem('refresh_token', data.refreshToken);
     localStorage.setItem(this.USER_KEY, JSON.stringify(data.userToken));
   }
 
@@ -96,7 +97,7 @@ export class AuthService {
   refreshToken(): Observable<AuthResponse> {
     const refreshToken = localStorage.getItem('refresh_token');
     
-    return this.http.post<AuthResponse>(`${this.apiUrl}/refresh`, { refreshToken })
+    return this.http.post<AuthResponse>(`${this.apiUrl}/api/v1/login/token`, { refreshToken })
       .pipe(
         tap((response: AuthResponse) => {
           if (response?.data?.accessToken) {
