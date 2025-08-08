@@ -22,9 +22,7 @@ export class AuthService {
     private router: Router
   ) {}
 
-  /**
-   * Realiza o login do usuário
-   */
+
   login(email: string, senha: string): Observable<AuthResponse> {
     const loginData = { email, senha };
     
@@ -35,7 +33,7 @@ export class AuthService {
             this.setTokenData(response.data);
             this.isAuthenticatedSubject.next(true);
             
-            // Redireciona para a URL guardada ou dashboard
+
             const redirectUrl = localStorage.getItem('redirectUrl') || '/dashboard';
             localStorage.removeItem('redirectUrl');
             this.router.navigate([redirectUrl]);
@@ -44,9 +42,7 @@ export class AuthService {
       );
   }
 
-  /**
-   * Realiza o logout do usuário
-   */
+
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
@@ -55,31 +51,22 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
-  /**
-   * Verifica se o usuário está autenticado
-   */
+
   isAuthenticated(): boolean {
     return this.hasValidToken();
   }
 
-  /**
-   * Retorna o token de acesso
-   */
+
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  /**
-   * Retorna os dados do usuário
-   */
+
   getUserData() {
     const userData = localStorage.getItem(this.USER_KEY);
     return userData ? JSON.parse(userData) : null;
   }
 
-  /**
-   * Verifica se possui token válido
-   */
   private hasValidToken(): boolean {
     const token = localStorage.getItem(this.TOKEN_KEY);
     
@@ -88,7 +75,7 @@ export class AuthService {
     }
 
     try {
-      // Decodifica o JWT para verificar expiração
+
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Math.floor(Date.now() / 1000);
       
@@ -99,17 +86,13 @@ export class AuthService {
     }
   }
 
-  /**
-   * Armazena os dados do token e usuário
-   */
+
   private setTokenData(data: any): void {
     localStorage.setItem(this.TOKEN_KEY, data.accessToken);
     localStorage.setItem(this.USER_KEY, JSON.stringify(data.userToken));
   }
 
-  /**
-   * Atualiza o token (se necessário para refresh)
-   */
+
   refreshToken(): Observable<AuthResponse> {
     const refreshToken = localStorage.getItem('refresh_token');
     
