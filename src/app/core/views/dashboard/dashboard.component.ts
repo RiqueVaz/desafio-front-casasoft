@@ -1,40 +1,45 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Observable, Subscription } from 'rxjs';
-import { AuthService } from '../../../core/services/auth.service'; // Ajuste o caminho se necessário
-import { ChamadoService } from '../../../core/services/chamado.service'; // Ajuste o caminho se necessário
-import { SignalRService } from '../../../core/services/signalr.service'; // Ajuste o caminho se necessário
-import { Chamado, StatusChamado } from '../../models/chamado.model'; // Ajuste o caminho se necessário
+import { Subscription } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
+import { ChamadoService } from '../../../core/services/chamado.service';
+import { SignalRService } from '../../../core/services/signalr.service';
+import { Chamado, StatusChamado } from '../../models/chamado.model';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  public chamados$: Observable<Chamado[]>;
+  public chamadosFiltrados: Chamado[] = [];
   public isLoading = true;
   public isSignalRConnected = false;
   public userData: any = null;
   public errorMessage = '';
-  
+
+  public filtroTitulo = '';
+  public filtroDescricao = '';
+
+  public paginaAtual = 1;
+  public maximoPorPagina = 10;
+  public totalChamados = 0; // total após filtro local
+
+  private todosChamados: Chamado[] = []; // dados da API carregados
   private subscriptions = new Subscription();
 
   constructor(
     private authService: AuthService,
     private chamadoService: ChamadoService,
     private signalRService: SignalRService
-  ) {
-    // Initialize the observable in constructor
-    this.chamados$ = this.chamadoService.chamados$;
-  }
+  ) {}
 
   ngOnInit(): void {
     this.userData = this.authService.getUserData();
-    
-    this.loadInitialChamados();
+    this.loadChamados();
     this.setupSignalRListeners();
   }
 
@@ -43,12 +48,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.signalRService.stopConnection();
   }
 
-  private loadInitialChamados(): void {
+  loadChamados(): void {
     this.isLoading = true;
     this.errorMessage = '';
-    const chamadosSub = this.chamadoService.getChamados().subscribe({
-      next: () => {
+
+    const sub = this.chamadoService.getChamados(this.paginaAtual, this.maximoPorPagina).subscribe({
+      next: (res) => {
         this.isLoading = false;
+        this.paginaAtual = res.data.pagina;
+        this.maximoPorPagina = res.data.tamanho;
+
+        // Guarda TODOS os chamados da página atual da API
+        this.todosChamados = res.data.resultado;
+
+        // Aplica filtro e paginação local
+        this.paginaAtual = 1; // resetar página local ao carregar dados novos
+        this.aplicarFiltroEPaginacao();
       },
       error: (err) => {
         this.isLoading = false;
@@ -59,64 +74,99 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       }
     });
-    this.subscriptions.add(chamadosSub);
+
+    this.subscriptions.add(sub);
   }
 
-  private setupSignalRListeners(): void {
+  aplicarFiltroEPaginacao(): void {
+    // Filtra na lista local (case insensitive)
+    let filtrados = this.todosChamados.filter(chamado =>
+      chamado.titulo.toLowerCase().includes(this.filtroTitulo.toLowerCase()) &&
+      chamado.descricao.toLowerCase().includes(this.filtroDescricao.toLowerCase())
+    );
+
+    // Atualiza total local para paginação do front
+    this.totalChamados = filtrados.length;
+
+    // Paginando localmente
+    const start = (this.paginaAtual - 1) * this.maximoPorPagina;
+    const end = start + this.maximoPorPagina;
+    this.chamadosFiltrados = filtrados.slice(start, end);
+  }
+
+  onFiltroChange(): void {
+    this.paginaAtual = 1; // resetar página ao filtrar
+    this.aplicarFiltroEPaginacao();
+  }
+
+  onPageChange(novaPagina: number): void {
+    if (novaPagina < 1 || novaPagina > this.totalPaginas()) return;
+    this.paginaAtual = novaPagina;
+    this.aplicarFiltroEPaginacao();
+  }
+
+  totalPaginas(): number {
+    return Math.ceil(this.totalChamados / this.maximoPorPagina) || 1;
+  }
+
+  setupSignalRListeners(): void {
     this.signalRService.startConnection();
 
     const statusSub = this.signalRService.getConnectionStatus().subscribe(isConnected => {
       this.isSignalRConnected = isConnected;
+      this.showNotification(
+        isConnected ? 'Conectado ao SignalR (tempo real ativado).' : 'SignalR desconectado. Fallback ativado.',
+        isConnected ? 'success' : 'info'
+      );
     });
 
     const broadcastSub = this.signalRService.getBroadcastMessages().subscribe(() => {
-      this.showNotification('A lista de chamados foi atualizada em tempo real!', 'success');
+      this.loadChamados();
+      this.showNotification('Lista de chamados atualizada em tempo real!', 'success');
     });
 
     this.subscriptions.add(statusSub);
     this.subscriptions.add(broadcastSub);
   }
 
-  // ===== FUNÇÃO ADICIONADA AQUI =====
-  /**
-   * Tenta reconectar manualmente ao SignalR.
-   */
-  public reconnectSignalR(): void {
-    console.log('Tentando reconectar o SignalR manualmente...');
+  reconnectSignalR(): void {
     this.showNotification('Tentando reconectar...', 'info');
     this.signalRService.startConnection();
   }
-  // ===================================
 
-  public refreshChamados(): void {
-    this.isLoading = true;
-    this.chamadoService.refreshChamados();
-    setTimeout(() => this.isLoading = false, 500);
+  refreshChamados(): void {
+    this.loadChamados();
   }
 
-  public logout(): void {
+  logout(): void {
     this.authService.logout();
   }
 
-  public getStatusClass(status: StatusChamado): string {
-    const statusMap: { [key in StatusChamado]: string } = {
-      ABERTO: 'status-aberto',
-      EM_ANDAMENTO: 'status-em-andamento',
-      FECHADO: 'status-fechado'
+  getStatusClass(status: StatusChamado | string): string {
+    const normalized = (status || '').toString().toUpperCase();
+    const statusMap: { [key: string]: string } = {
+      'ABERTO': 'status-aberto',
+      'EM_ATENDIMENTO': 'status-em-andamento',
+      'EM_ANDAMENTO': 'status-em-andamento',
+      'FINALIZADO': 'status-fechado',
+      'FECHADO': 'status-fechado'
     };
-    return statusMap[status] || 'status-default';
+    return statusMap[normalized] || 'status-default';
   }
 
-  public getStatusText(status: StatusChamado): string {
-    const statusTextMap: { [key in StatusChamado]: string } = {
-      ABERTO: 'Aberto',
-      EM_ANDAMENTO: 'Em Andamento',
-      FECHADO: 'Fechado'
+  getStatusText(status: StatusChamado | string): string {
+    const normalized = (status || '').toString().toUpperCase();
+    const statusTextMap: { [key: string]: string } = {
+      'ABERTO': 'Aberto',
+      'EM_ATENDIMENTO': 'Em Atendimento',
+      'EM_ANDAMENTO': 'Em Andamento',
+      'FINALIZADO': 'Finalizado',
+      'FECHADO': 'Fechado'
     };
-    return statusTextMap[status] || status.replace('_', ' ');
+    return statusTextMap[normalized] || normalized.replace('_', ' ');
   }
 
-  public formatDate(dateString: string): string {
+  formatDate(dateString: string): string {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString('pt-BR');
   }
@@ -125,7 +175,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     console.log(`NOTIFICAÇÃO (${type}): ${message}`);
   }
 
-  public trackByChamado(index: number, chamado: Chamado): number {
+  trackByChamado(index: number, chamado: Chamado): number {
     return chamado.id;
   }
 }

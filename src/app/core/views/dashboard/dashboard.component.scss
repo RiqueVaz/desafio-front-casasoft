@@ -77,12 +77,12 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  
+
   .connected & {
     background-color: #22c55e;
     animation: pulse-green 2s infinite;
   }
-  
+
   .disconnected & {
     background-color: #ef4444;
   }
@@ -152,6 +152,36 @@
 
 .btn-icon {
   font-size: 1rem;
+}
+
+// Filtros (inputs)
+.filters-container {
+  margin: 1rem 0 2rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.filter-input {
+  flex: 1 1 200px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #475569;
+  background-color: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+  }
+
+  &::placeholder {
+    color: #94a3b8;
+  }
 }
 
 // Main Content
@@ -464,6 +494,14 @@
 
   .descricao-text {
     -webkit-line-clamp: 1;
+  }
+
+  .filters-container {
+    flex-direction: column;
+  }
+
+  .filter-input {
+    width: 100%;
   }
 }
 

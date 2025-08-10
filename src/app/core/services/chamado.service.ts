@@ -1,132 +1,99 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { Chamado } from '../models/chamado.model';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { environment } from '../../../environments/environment';
+import { Chamado } from '../models/chamado.model';
+
+interface PaginatedResponse {
+  data: {
+    pagina: number;
+    tamanho: number;
+    total: number;
+    resultado: Chamado[];
+  };
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class ChamadoService {
-  private readonly apiUrl = environment.apiChamado;
-  
+  private readonly getChamadosUrl = environment.apiChamado + '/api/v1/chamados/pesquisa';
 
   private chamadosSubject = new BehaviorSubject<Chamado[]>([]);
   public chamados$ = this.chamadosSubject.asObservable();
 
-  constructor(
-    private http: HttpClient,
-    private authService: AuthService
-  ) {}
+  private paginaAtual = 1;
+  private maximoPorPagina = 10;
+  private filtroTitulo = '';
+  private filtroDescricao = '';
+  private totalChamados = 0;
 
+  constructor(private http: HttpClient, private authService: AuthService) {}
 
-  getChamados(): Observable<Chamado[]> {
-    const headers = this.getAuthHeaders();
-    
-    return this.http.get<any>(`${this.apiUrl}/listar`, { headers })
+  getChamados(
+    pagina: number = 1,
+    maximo: number = 10,
+    titulo: string = '',
+    descricao: string = ''
+  ): Observable<PaginatedResponse> {
+    let params = new HttpParams()
+      .set('pagina', pagina.toString())
+      .set('maximo', maximo.toString());
+
+    if (titulo) params = params.set('titulo', titulo);
+    if (descricao) params = params.set('descricao', descricao);
+
+    return this.http
+      .get<PaginatedResponse>(this.getChamadosUrl, {
+        headers: this.getAuthHeaders(),
+        params
+      })
       .pipe(
-        tap((response) => {
-
-          const chamados = this.extractChamadosFromResponse(response);
-          this.chamadosSubject.next(chamados);
-        })
+        tap(res => {
+          this.paginaAtual = res.data.pagina;
+          this.maximoPorPagina = res.data.tamanho;
+          this.totalChamados = res.data.total;
+          this.filtroTitulo = titulo;
+          this.filtroDescricao = descricao;
+          this.chamadosSubject.next(res.data.resultado);
+        }),
+        catchError(this.handleError)
       );
   }
-
-
-  atualizarPesquisa(): Observable<Chamado[]> {
-    const headers = this.getAuthHeaders();
-    
-    return this.http.get<any>(`${this.apiUrl}/AtualizarPesquisa`, { headers })
-      .pipe(
-        tap((response) => {
-          const chamados = this.extractChamadosFromResponse(response);
-          this.chamadosSubject.next(chamados);
-        })
-      );
-  }
-
-
-  getChamadoById(id: number): Observable<Chamado> {
-    const headers = this.getAuthHeaders();
-    
-    return this.http.get<any>(`${this.apiUrl}/${id}`, { headers });
-  }
-
-  createChamado(chamado: Partial<Chamado>): Observable<Chamado> {
-    const headers = this.getAuthHeaders();
-    
-    return this.http.post<any>(`${this.apiUrl}/criar`, chamado, { headers });
-  }
-
-
-  updateChamado(id: number, chamado: Partial<Chamado>): Observable<Chamado> {
-    const headers = this.getAuthHeaders();
-    
-    return this.http.put<any>(`${this.apiUrl}/${id}`, chamado, { headers });
-  }
-
-
-  updateChamadosList(): void {
-    this.atualizarPesquisa().subscribe({
-      next: () => {
-        console.log('Lista de chamados atualizada via SignalR');
-      },
-      error: (error) => {
-        console.error('Erro ao atualizar chamados via SignalR:', error);
-      }
-    });
-  }
-
-
-  getCurrentChamados(): Chamado[] {
-    return this.chamadosSubject.value;
-  }
-
 
   refreshChamados(): void {
-    this.getChamados().subscribe({
-      error: (error) => {
-        console.error('Erro ao buscar chamados:', error);
-      }
+    this.getChamados(this.paginaAtual, this.maximoPorPagina, this.filtroTitulo, this.filtroDescricao).subscribe({
+      next: () => console.log('✅ Lista de chamados atualizada.'),
+      error: err => console.error('❌ Erro ao atualizar a lista de chamados:', err)
     });
   }
 
+  getPaginaAtual(): number {
+    return this.paginaAtual;
+  }
+
+  getMaximoPorPagina(): number {
+    return this.maximoPorPagina;
+  }
+
+  getTotalChamados(): number {
+    return this.totalChamados;
+  }
+
+  setFiltros(titulo: string, descricao: string): void {
+    this.filtroTitulo = titulo;
+    this.filtroDescricao = descricao;
+  }
 
   private getAuthHeaders(): HttpHeaders {
     const token = this.authService.getToken();
-    
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    });
+    return new HttpHeaders({ Authorization: `Bearer ${token}` });
   }
 
-
-  private extractChamadosFromResponse(response: any): Chamado[] {
-
-    if (Array.isArray(response)) {
-      return response;
-    }
-    
- 
-    if (response?.data && Array.isArray(response.data)) {
-      return response.data;
-    }
-    
-
-    if (response?.items && Array.isArray(response.items)) {
-      return response.items;
-    }
-    
-
-    if (response?.data && !Array.isArray(response.data)) {
-      return [response.data];
-    }
-    
-    console.warn('Formato de resposta não reconhecido:', response);
-    return [];
+  private handleError(error: any) {
+    console.error('❌ Ocorreu um erro na API de Chamados', error);
+    return throwError(() => new Error('Erro no serviço de chamados.'));
   }
 }

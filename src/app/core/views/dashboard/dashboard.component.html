@@ -63,6 +63,24 @@
       </div>
     </div>
 
+    <!-- Filtros -->
+    <div class="filters-container" *ngIf="!isLoading && !errorMessage">
+      <input
+        type="text"
+        placeholder="Filtrar por título"
+        [(ngModel)]="filtroTitulo"
+        (ngModelChange)="onFiltroChange()"
+        class="filter-input"
+      />
+      <input
+        type="text"
+        placeholder="Filtrar por descrição"
+        [(ngModel)]="filtroDescricao"
+        (ngModelChange)="onFiltroChange()"
+        class="filter-input"
+      />
+    </div>
+
     <!-- Chamados Table -->
     <div *ngIf="!isLoading && !errorMessage" class="table-container">
       
@@ -70,8 +88,8 @@
       <div class="table-header-info">
         <h2>Lista de Chamados</h2>
         <div class="table-info">
-          <span class="info-badge" *ngIf="chamados$ | async as chamados">
-            {{ chamados.length }} chamados encontrados
+          <span class="info-badge">
+            {{ totalChamados }} chamados encontrados
           </span>
           <span class="realtime-badge" *ngIf="isSignalRConnected">
             ⚡ Atualizações em tempo real
@@ -93,7 +111,7 @@
           </thead>
           <tbody>
             <tr 
-              *ngFor="let chamado of chamados$ | async; trackBy: trackByChamado" 
+              *ngFor="let chamado of chamadosFiltrados; trackBy: trackByChamado" 
               class="table-row"
             >
               <td class="col-id">
@@ -131,7 +149,7 @@
             </tr>
             
             <!-- Empty State -->
-            <tr *ngIf="(chamados$ | async)?.length === 0" class="empty-row">
+            <tr *ngIf="chamadosFiltrados.length === 0" class="empty-row">
               <td colspan="5" class="empty-cell">
                 <div class="empty-state">
                   <span class="empty-icon">📋</span>
@@ -143,6 +161,14 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Paginação -->
+      <div class="pagination-container" *ngIf="totalChamados > maximoPorPagina">
+        <button (click)="onPageChange(paginaAtual - 1)" [disabled]="paginaAtual === 1">Anterior</button>
+        <span>Página {{ paginaAtual }} de {{ totalPaginas() }}</span>
+        <button (click)="onPageChange(paginaAtual + 1)" [disabled]="paginaAtual === totalPaginas()">Próximo</button>
+      </div>
+
     </div>
 
   </main>
