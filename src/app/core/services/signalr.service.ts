@@ -1,6 +1,6 @@
-import { Injectable } from '@angular/core';
-import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
-import { Observable, Subject } from 'rxjs';
+import { Injectable, OnDestroy } from '@angular/core';
+import * as signalR from '@microsoft/signalr';
+import { Subject, Observable } from 'rxjs';
 import { AuthService } from './auth.service';
 import { ChamadoService } from './chamado.service';
 import { environment } from '../../../environments/environment';
@@ -8,167 +8,126 @@ import { environment } from '../../../environments/environment';
 @Injectable({
   providedIn: 'root'
 })
-export class SignalRService {
-  private hubConnection?: HubConnection;
-  private readonly hubUrl = environment.signalrHub;
-  
-
+export class SignalRService implements OnDestroy {
+  private hubConnection?: signalR.HubConnection;
   private broadcastMessageSubject = new Subject<any>();
-  public broadcastMessage$ = this.broadcastMessageSubject.asObservable();
-
-
   private connectionStatusSubject = new Subject<boolean>();
-  public connectionStatus$ = this.connectionStatusSubject.asObservable();
 
   constructor(
-    private authService: AuthService,
+    private auth: AuthService,
     private chamadoService: ChamadoService
   ) {}
 
-  public async startConnection(): Promise<void> {
-    try {
-      const token = this.authService.getToken();
-      
-      if (!token) {
-        console.error('Token não encontrado para conexão SignalR');
-        return;
-      }
-
-
-      this.hubConnection = new HubConnectionBuilder()
-        .withUrl(this.hubUrl, {
-          accessTokenFactory: () => token
-        })
-        .withAutomaticReconnect([0, 2000, 10000, 30000])
-        .configureLogging(LogLevel.Information)
-        .build();
-
-
-      this.setupEventListeners();
-
-
-      await this.hubConnection.start();
-      console.log('Conexão SignalR estabelecida com sucesso');
-      this.connectionStatusSubject.next(true);
-
-    } catch (error) {
-      console.error('Erro ao conectar com SignalR:', error);
+public async startConnection(): Promise<void> {
+    const token = this.auth.getToken();
+    if (!token) {
+      console.error('❌ Token não encontrado');
       this.connectionStatusSubject.next(false);
-      
-
-      setTimeout(() => {
-        this.startConnection();
-      }, 5000);
-    }
-  }
-
-
-  public async stopConnection(): Promise<void> {
-    if (this.hubConnection) {
-      try {
-        await this.hubConnection.stop();
-        console.log('Conexão SignalR encerrada');
-        this.connectionStatusSubject.next(false);
-      } catch (error) {
-        console.error('Erro ao encerrar conexão SignalR:', error);
-      }
-    }
-  }
-
-
-  public isConnected(): boolean {
-    return this.hubConnection?.state === 'Connected';
-  }
-
-
-  public async sendMessage(method: string, ...args: any[]): Promise<void> {
-    if (this.hubConnection && this.isConnected()) {
-      try {
-        await this.hubConnection.invoke(method, ...args);
-      } catch (error) {
-        console.error(`Erro ao enviar mensagem ${method}:`, error);
-      }
-    } else {
-      console.warn('Conexão SignalR não está ativa');
-    }
-  }
-
-
-  private setupEventListeners(): void {
-    if (!this.hubConnection) {
       return;
     }
 
+    try {
+      if (this.hubConnection) {
+        await this.hubConnection.stop();
+      }
 
-    this.hubConnection.on('BroadcastMessage', (message: any) => {
-      console.log('Mensagem recebida via SignalR:', message);
-      
+      this.hubConnection = new signalR.HubConnectionBuilder()
+        .withUrl('/hub', {
+          accessTokenFactory: () => token,
+          skipNegotiation: true,
+          transport: signalR.HttpTransportType.WebSockets,
+          timeout: 30000
+        })
+        .withAutomaticReconnect({
+          nextRetryDelayInMilliseconds: (retryContext) => {
+            if (retryContext.previousRetryCount === 0) return 0;
+            if (retryContext.previousRetryCount < 3) return 2000;
+            return 5000;
+          }
+        })
+        .configureLogging(signalR.LogLevel.Debug)
+        .build();
 
-      this.broadcastMessageSubject.next(message);
-      
+      this.setupEventHandlers();
+      await this.hubConnection.start();
+      console.log('✅ SignalR Connected');
+      this.connectionStatusSubject.next(true);
 
-      this.chamadoService.updateChamadosList();
-    });
-
-
-    this.hubConnection.on('ChamadoAtualizado', (chamadoId: number) => {
-      console.log(`Chamado ${chamadoId} foi atualizado`);
-      this.chamadoService.updateChamadosList();
-    });
-
-    this.hubConnection.on('NovoChamado', (chamado: any) => {
-      console.log('Novo chamado criado:', chamado);
-      this.chamadoService.updateChamadosList();
-    });
-
-
-    this.hubConnection.onclose((error) => {
-      console.log('Conexão SignalR fechada:', error);
+    } catch (error: any) {
+      console.error('❌ SignalR Connection Error:', error);
       this.connectionStatusSubject.next(false);
-      
+      // Implement fallback mechanism here
+    }
+  }
 
-      setTimeout(() => {
-        this.startConnection();
-      }, 3000);
-    });
+  private setupEventHandlers(): void {
+    if (!this.hubConnection) return;
 
     this.hubConnection.onreconnecting((error) => {
-      console.log('Tentando reconectar SignalR...', error);
+      console.log('🔄 SignalR Reconnecting...', error?.message || '');
       this.connectionStatusSubject.next(false);
     });
 
     this.hubConnection.onreconnected((connectionId) => {
-      console.log('SignalR reconectado. ID:', connectionId);
+      console.log('✅ SignalR Reconnected:', connectionId);
       this.connectionStatusSubject.next(true);
+    });
+
+    this.hubConnection.onclose((error) => {
+      console.log('❌ SignalR Connection closed:', error?.message || '');
+      this.connectionStatusSubject.next(false);
+    });
+
+    this.hubConnection.on('BroadcastMessage', (payload: any) => {
+      console.log('📢 BroadcastMessage recebido:', payload);
+      this.broadcastMessageSubject.next(payload);
+      this.chamadoService.refreshChamados();
+    });
+
+    const eventosAlternativos = [
+      'MessageReceived',
+      'ChamadoUpdated',
+      'ChamadoCreated',
+      'UpdateChamados',
+      'RefreshChamados'
+    ];
+
+    eventosAlternativos.forEach(evento => {
+      this.hubConnection!.on(evento, (payload: any) => {
+        console.log(`📨 Evento '${evento}':`, payload);
+        this.broadcastMessageSubject.next(payload);
+        this.chamadoService.refreshChamados();
+      });
     });
   }
 
-
-  public addListener(eventName: string, callback: (...args: any[]) => void): void {
+  public async stopConnection(): Promise<void> {
     if (this.hubConnection) {
-      this.hubConnection.on(eventName, callback);
+      console.log('🔌 Desconectando SignalR...');
+      await this.hubConnection.stop();
+      this.connectionStatusSubject.next(false);
     }
   }
-
-  public removeListener(eventName: string): void {
-    if (this.hubConnection) {
-      this.hubConnection.off(eventName);
-    }
-  }
-
 
   public getBroadcastMessages(): Observable<any> {
-    return this.broadcastMessage$;
+    return this.broadcastMessageSubject.asObservable();
   }
-
 
   public getConnectionStatus(): Observable<boolean> {
-    return this.connectionStatus$;
+    return this.connectionStatusSubject.asObservable();
   }
 
+  public getConnectionInfo(): any {
+    if (!this.hubConnection) return null;
 
-  public async forceReconnect(): Promise<void> {
-    await this.stopConnection();
-    await this.startConnection();
+    return {
+      state: this.hubConnection.state,
+      connectionId: this.hubConnection.connectionId,
+      baseUrl: (this.hubConnection as any).baseUrl // baseUrl não é oficial, use com cuidado
+    };
+  }
+
+  ngOnDestroy(): void {
+    this.stopConnection();
   }
 }
