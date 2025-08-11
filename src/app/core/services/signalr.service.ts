@@ -3,7 +3,6 @@ import * as signalR from '@microsoft/signalr';
 import { Subject, Observable } from 'rxjs';
 import { AuthService } from './auth.service';
 import { ChamadoService } from './chamado.service';
-import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -18,10 +17,10 @@ export class SignalRService implements OnDestroy {
     private chamadoService: ChamadoService
   ) {}
 
-public async startConnection(): Promise<void> {
+  public async startConnection(): Promise<void> {
     const token = this.auth.getToken();
     if (!token) {
-      console.error('❌ Token não encontrado');
+      console.error('Token não encontrado');
       this.connectionStatusSubject.next(false);
       return;
     }
@@ -32,7 +31,7 @@ public async startConnection(): Promise<void> {
       }
 
       this.hubConnection = new signalR.HubConnectionBuilder()
-        .withUrl('/hub', {
+        .withUrl('https://casasoftchamado.casasoftsig.net.br/chamado/AtualizarPesquisa', {
           accessTokenFactory: () => token,
           skipNegotiation: true,
           transport: signalR.HttpTransportType.WebSockets,
@@ -50,13 +49,12 @@ public async startConnection(): Promise<void> {
 
       this.setupEventHandlers();
       await this.hubConnection.start();
-      console.log('✅ SignalR Connected');
+      console.log('SignalR Connected');
       this.connectionStatusSubject.next(true);
 
     } catch (error: any) {
-      console.error('❌ SignalR Connection Error:', error);
+      console.error('SignalR Connection Error:', error);
       this.connectionStatusSubject.next(false);
-      // Implement fallback mechanism here
     }
   }
 
@@ -64,46 +62,30 @@ public async startConnection(): Promise<void> {
     if (!this.hubConnection) return;
 
     this.hubConnection.onreconnecting((error) => {
-      console.log('🔄 SignalR Reconnecting...', error?.message || '');
+      console.log('SignalR Reconnecting...', error?.message || '');
       this.connectionStatusSubject.next(false);
     });
 
     this.hubConnection.onreconnected((connectionId) => {
-      console.log('✅ SignalR Reconnected:', connectionId);
+      console.log('SignalR Reconnected:', connectionId);
       this.connectionStatusSubject.next(true);
     });
 
     this.hubConnection.onclose((error) => {
-      console.log('❌ SignalR Connection closed:', error?.message || '');
+      console.log('SignalR Connection closed:', error?.message || '');
       this.connectionStatusSubject.next(false);
     });
 
     this.hubConnection.on('BroadcastMessage', (payload: any) => {
-      console.log('📢 BroadcastMessage recebido:', payload);
+      console.log('BroadcastMessage recebido:', payload);
       this.broadcastMessageSubject.next(payload);
       this.chamadoService.refreshChamados();
-    });
-
-    const eventosAlternativos = [
-      'MessageReceived',
-      'ChamadoUpdated',
-      'ChamadoCreated',
-      'UpdateChamados',
-      'RefreshChamados'
-    ];
-
-    eventosAlternativos.forEach(evento => {
-      this.hubConnection!.on(evento, (payload: any) => {
-        console.log(`📨 Evento '${evento}':`, payload);
-        this.broadcastMessageSubject.next(payload);
-        this.chamadoService.refreshChamados();
-      });
     });
   }
 
   public async stopConnection(): Promise<void> {
     if (this.hubConnection) {
-      console.log('🔌 Desconectando SignalR...');
+      console.log('Desconectando SignalR...');
       await this.hubConnection.stop();
       this.connectionStatusSubject.next(false);
     }
@@ -123,7 +105,7 @@ public async startConnection(): Promise<void> {
     return {
       state: this.hubConnection.state,
       connectionId: this.hubConnection.connectionId,
-      baseUrl: (this.hubConnection as any).baseUrl // baseUrl não é oficial, use com cuidado
+      baseUrl: (this.hubConnection as any).baseUrl
     };
   }
 
