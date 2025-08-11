@@ -1,59 +1,78 @@
-# DesafioFrontCasasoft
+# Desafio Front-end Casasoft
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.1.5.
+Aplicação web desenvolvida em Angular para gestão de chamados com autenticação JWT e atualizações em tempo real via SignalR.
 
-## Development server
+## Tecnologias Utilizadas
 
-To start a local development server, run:
+- Angular v20.1.0
+- TypeScript v5.8.2
+- RxJS v7.8.0
+- SignalR v2.4.3 (@microsoft/signalr v9.0.6)
+- Express v5.1.0
+- SCSS
+- JWT Authentication
 
+## Pré-requisitos
+
+- Node.js (v20.x)
+- npm (última versão estável)
+- Angular CLI (v20.1.5)
+
+## Instalação e Execução
+
+1. Clone o repositório:
 ```bash
-ng serve
+git clone https://github.com/seu-usuario/desafio-front-casasoft.git
+cd desafio-front-casasoft
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
+2. Instale as dependências:
 ```bash
-ng generate component component-name
+npm install
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
+3. Execute o projeto:
 ```bash
-ng generate --help
+npm start
 ```
 
-## Building
+4. Acesse a aplicação em: `http://localhost:4200`
 
-To build the project run:
+## Informações de Login
 
-```bash
-ng build
+- **Email**: teste@casasoft.com.br
+- **Senha**: teste#1234
+
+## Arquitetura do Projeto
+
+O projeto segue uma arquitetura limpa e modular com arquitetura MVC aplicada em Angular:
+
+```
+src/
+├── app/
+│   ├── core/           # Núcleo da aplicação
+│   │   ├── guards/     # Guards de autenticação
+│   │   ├── services/   # Serviços
+│   │   └── models/     # Interfaces e modelos
+│   └── views/          # Componentes de página
+└── environments/       # Configurações de ambiente
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Decisões Técnicas
 
-## Running unit tests
+1. **Arquitetura Limpa**
+   - Separação clara de responsabilidades
+   - Código modular e organizado
+   - Fácil manutenção e testabilidade
+   - Arquitetura MVC adaptada para Angular
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+2. **Autenticação**
+   - JWT para segurança
+   - Guards para proteção de rotas
+   - Interceptors para gerenciamento de tokens
 
-```bash
-ng test
-```
+3. **Atualizações em Tempo Real**
+   - SignalR para atualizações em tempo real
+   - Sem necessidade de refresh manual
+   - Melhor experiência do usuário
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
