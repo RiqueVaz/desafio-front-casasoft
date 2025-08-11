@@ -23,18 +23,18 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       
   
       if (error.status === 401) {
-        console.log('Token expirado ou inválido. Redirecionando para login...');
+        console.log('Token expirado ou inválido.');
         authService.logout();
       }
 
 
       if (error.status === 403) {
-        console.log('Acesso negado. Usuário sem permissão.');
+        console.log('Acesso negado.');
       }
 
 
       if (error.status === 0) {
-        console.error('Erro de rede. Verifique sua conexão.');
+        console.error('Erro de rede.');
       }
 
       return throwError(() => error);

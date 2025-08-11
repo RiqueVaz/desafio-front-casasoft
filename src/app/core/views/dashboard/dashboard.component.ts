@@ -26,9 +26,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   public paginaAtual = 1;
   public maximoPorPagina = 10;
-  public totalChamados = 0; // total após filtro local
+  public totalChamados = 0; 
 
-  private todosChamados: Chamado[] = []; // dados da API carregados
+  private todosChamados: Chamado[] = []; 
   private subscriptions = new Subscription();
 
   constructor(
@@ -58,11 +58,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.paginaAtual = res.data.pagina;
         this.maximoPorPagina = res.data.tamanho;
 
-        // Guarda TODOS os chamados da página atual da API
+
         this.todosChamados = res.data.resultado;
 
-        // Aplica filtro e paginação local
-        this.paginaAtual = 1; // resetar página local ao carregar dados novos
+
+        this.paginaAtual = 1; 
         this.aplicarFiltroEPaginacao();
       },
       error: (err) => {
@@ -79,23 +79,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   aplicarFiltroEPaginacao(): void {
-    // Filtra na lista local (case insensitive)
+
     let filtrados = this.todosChamados.filter(chamado =>
       chamado.titulo.toLowerCase().includes(this.filtroTitulo.toLowerCase()) &&
       chamado.descricao.toLowerCase().includes(this.filtroDescricao.toLowerCase())
     );
 
-    // Atualiza total local para paginação do front
+ 
     this.totalChamados = filtrados.length;
 
-    // Paginando localmente
+
     const start = (this.paginaAtual - 1) * this.maximoPorPagina;
     const end = start + this.maximoPorPagina;
     this.chamadosFiltrados = filtrados.slice(start, end);
   }
 
   onFiltroChange(): void {
-    this.paginaAtual = 1; // resetar página ao filtrar
+    this.paginaAtual = 1; 
     this.aplicarFiltroEPaginacao();
   }
 

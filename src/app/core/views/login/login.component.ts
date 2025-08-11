@@ -26,17 +26,11 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit() {
-    // Se já estiver logado, redireciona para dashboard
     if (this.authService.isAuthenticated()) {
       this.router.navigate(['/dashboard']);
     }
-
-    
   }
 
-  /**
-   * Cria o formulário reativo
-   */
   private createForm(): void {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -44,14 +38,6 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  /**
-   * Preenche com credenciais de teste
-   */
-  
-
-  /**
-   * Realiza o login
-   */
   onSubmit(): void {
     if (this.loginForm.invalid) {
       this.markFormGroupTouched();
@@ -66,7 +52,6 @@ export class LoginComponent implements OnInit {
     this.authService.login(email, senha).subscribe({
       next: (response) => {
         console.log('Login realizado com sucesso:', response);
-        // O redirecionamento é feito automaticamente no AuthService
       },
       error: (error) => {
         console.error('Erro no login:', error);
@@ -86,24 +71,15 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  /**
-   * Alterna visibilidade da senha
-   */
   togglePasswordVisibility(): void {
     this.showPassword = !this.showPassword;
   }
 
-  /**
-   * Verifica se um campo específico é inválido e foi tocado
-   */
   isFieldInvalid(fieldName: string): boolean {
     const field = this.loginForm.get(fieldName);
     return !!(field && field.invalid && field.touched);
   }
 
-  /**
-   * Retorna a mensagem de erro para um campo específico
-   */
   getFieldError(fieldName: string): string {
     const field = this.loginForm.get(fieldName);
     
@@ -121,18 +97,12 @@ export class LoginComponent implements OnInit {
     return '';
   }
 
-  /**
-   * Marca todos os campos do formulário como tocados
-   */
   private markFormGroupTouched(): void {
     Object.values(this.loginForm.controls).forEach(control => {
       control.markAsTouched();
     });
   }
 
-  /**
-   * Retorna o label do campo para mensagens de erro
-   */
   private getFieldLabel(fieldName: string): string {
     const labels: { [key: string]: string } = {
       email: 'Email',
@@ -141,18 +111,12 @@ export class LoginComponent implements OnInit {
     return labels[fieldName] || fieldName;
   }
 
-  /**
-   * Reset do formulário
-   */
   resetForm(): void {
     this.loginForm.reset();
     this.errorMessage = '';
     this.isLoading = false;
   }
 
-  /**
-   * Navega para rota específica
-   */
   navigateTo(route: string): void {
     this.router.navigate([route]);
   }

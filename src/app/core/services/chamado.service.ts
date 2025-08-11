@@ -65,8 +65,8 @@ export class ChamadoService {
 
   refreshChamados(): void {
     this.getChamados(this.paginaAtual, this.maximoPorPagina, this.filtroTitulo, this.filtroDescricao).subscribe({
-      next: () => console.log('✅ Lista de chamados atualizada.'),
-      error: err => console.error('❌ Erro ao atualizar a lista de chamados:', err)
+      next: () => console.log('Lista de chamados atualizada.'),
+      error: err => console.error('Erro ao atualizar a lista de chamados:', err)
     });
   }
 
@@ -93,7 +93,7 @@ export class ChamadoService {
   }
 
   private handleError(error: any) {
-    console.error('❌ Ocorreu um erro na API de Chamados', error);
+    console.error('Ocorreu um erro na API de Chamados', error);
     return throwError(() => new Error('Erro no serviço de chamados.'));
   }
 }
