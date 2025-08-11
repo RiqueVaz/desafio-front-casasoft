@@ -1,0 +1,21 @@
+{
+  "/chamado": {
+    "target": "https://casasoftchamado.casasoftsig.net.br",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/autenticacao": {
+    "target": "https://casasoftchamado.casasoftsig.net.br",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/hub": {
+    "target": "https://casasoftchamado.casasoftsig.net.br",
+    "secure": false,
+    "changeOrigin": true,
+    "ws": true,
+    "pathRewrite": {
+      "^/hub": "/hub"
+    }
+  }
+}
