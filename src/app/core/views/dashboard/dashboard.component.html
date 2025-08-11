@@ -11,32 +11,7 @@
       </div>
       
       <div class="header-actions">
-        <!-- Status SignalR -->
-        <div class="signalr-status">
-          <div class="status-indicator" [class.connected]="isSignalRConnected" [class.disconnected]="!isSignalRConnected">
-            <span class="status-dot"></span>
-            <span class="status-text">
-              {{ isSignalRConnected ? 'Tempo Real: Ativo' : 'Tempo Real: Inativo' }}
-            </span>
-          </div>
-          <button 
-            *ngIf="!isSignalRConnected" 
-            class="btn-reconnect" 
-            (click)="reconnectSignalR()"
-            title="Reconectar tempo real"
-          >
-            🔄
-          </button>
-        </div>
-
-        <!-- Botões de ação -->
-        <button class="btn-secondary" (click)="refreshChamados()" [disabled]="isLoading">
-          <span class="btn-icon">🔄</span>
-          Atualizar
-        </button>
-        
         <button class="btn-danger" (click)="logout()">
-          <span class="btn-icon">🚪</span>
           Sair
         </button>
       </div>
@@ -55,7 +30,6 @@
     <!-- Error State -->
     <div *ngIf="errorMessage && !isLoading" class="error-container">
       <div class="error-card">
-        <span class="error-icon">⚠️</span>
         <p>{{ errorMessage }}</p>
         <button class="btn-primary" (click)="refreshChamados()">
           Tentar Novamente
@@ -90,9 +64,6 @@
         <div class="table-info">
           <span class="info-badge">
             {{ totalChamados }} chamados encontrados
-          </span>
-          <span class="realtime-badge" *ngIf="isSignalRConnected">
-             Atualizações em tempo real
           </span>
         </div>
       </div>
@@ -152,7 +123,6 @@
             <tr *ngIf="chamadosFiltrados.length === 0" class="empty-row">
               <td colspan="5" class="empty-cell">
                 <div class="empty-state">
-                  <span class="empty-icon">📋</span>
                   <p class="empty-title">Nenhum chamado encontrado</p>
                   <p class="empty-subtitle">Os chamados aparecerão aqui quando disponíveis</p>
                 </div>
